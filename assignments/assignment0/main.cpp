@@ -4,9 +4,18 @@
 #include <ew/external/glad.h>
 
 #include <GLFW/glfw3.h>
+#include <glm/glm.hpp>
 #include <imgui.h>
 #include <imgui_impl_glfw.h>
 #include <imgui_impl_opengl3.h>
+
+// ew includes
+#include <ew/shader.h>
+#include <ew/model.h>
+#include <ew/transform.h>
+#include <ew/camera.h>
+#include <ew/cameraController.h>
+#include <ew/texture.h>
 
 void framebufferSizeCallback(GLFWwindow* window, int width, int height);
 GLFWwindow* initWindow(const char* title, int width, int height);
@@ -18,9 +27,43 @@ int screenHeight = 720;
 float prevFrameTime;
 float deltaTime;
 
+void resetCamera(ew::Camera* camera, ew::CameraController* controller)
+{
+	camera->position = glm::vec3(0, 0, 5.0f);
+	camera->target = glm::vec3(0);
+	controller->yaw = controller->pitch = 0;
+}
+
+struct Material
+{
+	float Ambient = 1.0;
+	float Diffuse = 0.5;
+	float Specular = 0.5;
+	float Shininess = 128;
+} material;
+
+ew::CameraController cameraControl;
+ew::Camera camera;
+
 int main() {
 	GLFWwindow* window = initWindow("Assignment 0", screenWidth, screenHeight);
 	glfwSetFramebufferSizeCallback(window, framebufferSizeCallback);
+
+	camera.position = glm::vec3(0.0f, 0.0f, 5.0f);
+	camera.target = glm::vec3(0.0f, 0.0f, 0.0f);
+	camera.aspectRatio = (float)screenWidth / screenHeight;
+	camera.fov = 60.0f;
+
+	ew::Shader shader = ew::Shader("assets/lit.vert", "assets/lit.frag");
+	ew::Model monkey = ew::Model("assets/Suzanne.obj");
+	ew::Transform monkeyTransform;
+
+	GLuint brickTex = ew::loadTexture("assets/brick_color.jpg");
+	
+
+	glEnable(GL_CULL_FACE);
+	glCullFace(GL_BACK);
+	glEnable(GL_DEPTH_TEST);
 
 	while (!glfwWindowShouldClose(window)) {
 		glfwPollEvents();
@@ -32,6 +75,25 @@ int main() {
 		//RENDER
 		glClearColor(0.6f,0.8f,0.92f,1.0f);
 		glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+
+		glBindTextureUnit(0, brickTex);
+
+		shader.use();
+		// lighting & materials
+		shader.setVec3("_EyePos", camera.position);
+		shader.setFloat("_Material.Ka", material.Ambient);
+		shader.setFloat("_Material.Kd", material.Diffuse);
+		shader.setFloat("_Material.Ks", material.Specular);
+		shader.setFloat("_Material.Shininess", material.Shininess);
+
+		// texture
+		shader.setInt("_MainTex", 0);
+		cameraControl.move(window, &camera, deltaTime);
+		monkeyTransform.rotation = glm::rotate(monkeyTransform.rotation, deltaTime, glm::vec3(0.0f, 1.0f, 0.0f));
+		
+		shader.setMat4("_Model", monkeyTransform.modelMatrix());
+		shader.setMat4("_ViewProjection", camera.projectionMatrix() * camera.viewMatrix());
+		monkey.draw();
 
 		drawUI();
 
@@ -46,7 +108,19 @@ void drawUI() {
 	ImGui::NewFrame();
 
 	ImGui::Begin("Settings");
-	ImGui::Text("Add Controls Here!");
+	if (ImGui::Button("Reset Camera"))
+	{
+		resetCamera(&camera, &cameraControl);
+	}
+
+	if (ImGui::CollapsingHeader("Material Settings")) {
+		ImGui::SliderFloat("AmbientK", &material.Ambient, 0.0f, 1.0f);
+		ImGui::SliderFloat("DiffuseK", &material.Diffuse, 0.0f, 1.0f);
+		ImGui::SliderFloat("SpecularK", &material.Specular, 0.0f, 1.0f);
+		ImGui::SliderFloat("Shininess", &material.Shininess, 2.0f, 1024.0f);
+	}
+
+
 	ImGui::End();
 
 	ImGui::Render();
