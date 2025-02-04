@@ -46,8 +46,13 @@ struct Material
 ew::CameraController cameraControl;
 ew::Camera camera;
 
+// ImGui variables
+bool postProcessEnabled = true;
+int postProcessEffect = 0;
+glm::vec3 backgroundColor = glm::vec3(0.6f, 0.8f, 0.92f);
+
 int main() {
-	GLFWwindow* window = initWindow("Assignment 0", screenWidth, screenHeight);
+	GLFWwindow* window = initWindow("Assignment 1", screenWidth, screenHeight);
 	glfwSetFramebufferSizeCallback(window, framebufferSizeCallback);
 
 	camera.position = glm::vec3(0.0f, 0.0f, 5.0f);
@@ -57,12 +62,15 @@ int main() {
 
 	ew::Shader shader = ew::Shader("assets/lit.vert", "assets/lit.frag");
 	ew::Shader screenShader = ew::Shader("assets/screen.vert", "assets/screen.frag");
+	ew::Shader postShader = ew::Shader("assets/screen.vert", "assets/effects.frag");
+
 	ew::Model monkey = ew::Model("assets/Suzanne.obj");
 	ew::Transform monkeyTransform;
 
 	GLuint brickTex = ew::loadTexture("assets/brick_color.jpg");
 	
 	vg3o::ScreenBuffer framebuffer(screenWidth, screenHeight);
+	
 
 	// Global settings
 	glEnable(GL_MULTISAMPLE);
@@ -84,7 +92,7 @@ int main() {
 		framebuffer.useBuffer();
 		glEnable(GL_DEPTH_TEST);
 		//RENDER
-		glClearColor(0.6f,0.8f,0.92f,1.0f);
+		glClearColor(backgroundColor.x, backgroundColor.y, backgroundColor.z, 1.0f);
 		glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
 		glBindTextureUnit(0, brickTex);
@@ -110,7 +118,13 @@ int main() {
 
 		framebuffer.useDefaultBuffer(); // go back to the framebuffer we want to draw on screen
 
-		screenShader.use(); // basic shader to draw the framebuffer quad
+		if (!postProcessEnabled) screenShader.use();
+		else
+		{
+			postShader.use();
+			postShader.setInt("_PostProcessEffect", postProcessEffect);
+		}
+
 		glDisable(GL_DEPTH_TEST); // disable depth testing cause we want the framebuffer to be on top of everything else
 		glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 		glActiveTexture(GL_TEXTURE0);
@@ -130,6 +144,10 @@ void drawUI() {
 	ImGui::NewFrame();
 
 	ImGui::Begin("Settings");
+	ImGui::ColorPicker3("Background Color", &backgroundColor.x);
+
+	ImGui::Separator();
+
 	if (ImGui::Button("Reset Camera"))
 	{
 		resetCamera(&camera, &cameraControl);
@@ -141,8 +159,12 @@ void drawUI() {
 		ImGui::SliderFloat("SpecularK", &material.Specular, 0.0f, 1.0f);
 		ImGui::SliderFloat("Shininess", &material.Shininess, 2.0f, 1024.0f);
 	}
-
-
+	ImGui::Separator();
+	ImGui::Checkbox("Enable Post Processing", &postProcessEnabled);
+	if (postProcessEnabled)
+	{
+		ImGui::SliderInt("Effect Type", &postProcessEffect, 0, 1);
+	}
 	ImGui::End();
 
 	ImGui::Render();
