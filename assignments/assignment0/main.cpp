@@ -16,6 +16,7 @@
 #include <ew/camera.h>
 #include <ew/cameraController.h>
 #include <ew/texture.h>
+#include <ew/Framebuffer.h>
 
 void framebufferSizeCallback(GLFWwindow* window, int width, int height);
 GLFWwindow* initWindow(const char* title, int width, int height);
@@ -55,15 +56,23 @@ int main() {
 	camera.fov = 60.0f;
 
 	ew::Shader shader = ew::Shader("assets/lit.vert", "assets/lit.frag");
+	ew::Shader screenShader = ew::Shader("assets/screen.vert", "assets/screen.frag");
 	ew::Model monkey = ew::Model("assets/Suzanne.obj");
 	ew::Transform monkeyTransform;
 
 	GLuint brickTex = ew::loadTexture("assets/brick_color.jpg");
 	
+	vg3o::ScreenBuffer framebuffer(screenWidth, screenHeight);
 
+	// Global settings
+	glEnable(GL_MULTISAMPLE);
 	glEnable(GL_CULL_FACE);
 	glCullFace(GL_BACK);
 	glEnable(GL_DEPTH_TEST);
+	glDepthFunc(GL_LESS);
+
+	glEnable(GL_BLEND);
+	glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
 
 	while (!glfwWindowShouldClose(window)) {
 		glfwPollEvents();
@@ -72,6 +81,8 @@ int main() {
 		deltaTime = time - prevFrameTime;
 		prevFrameTime = time;
 
+		framebuffer.useBuffer();
+		glEnable(GL_DEPTH_TEST);
 		//RENDER
 		glClearColor(0.6f,0.8f,0.92f,1.0f);
 		glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
@@ -94,6 +105,17 @@ int main() {
 		shader.setMat4("_Model", monkeyTransform.modelMatrix());
 		shader.setMat4("_ViewProjection", camera.projectionMatrix() * camera.viewMatrix());
 		monkey.draw();
+
+		// FINISH RENDER
+
+		framebuffer.useDefaultBuffer(); // go back to the framebuffer we want to draw on screen
+
+		screenShader.use(); // basic shader to draw the framebuffer quad
+		glDisable(GL_DEPTH_TEST); // disable depth testing cause we want the framebuffer to be on top of everything else
+		glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+		glActiveTexture(GL_TEXTURE0);
+		glBindTexture(GL_TEXTURE_2D, framebuffer.getColorBuffers()[0]);
+		framebuffer.draw();
 
 		drawUI();
 
