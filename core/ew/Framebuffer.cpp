@@ -6,6 +6,7 @@
 
 
 namespace vg3o {
+	unsigned int ScreenBuffer::mVAO = 0;
 	void ScreenBuffer::draw() {
 		glBindVertexArray(mVAO);
 		glDrawArrays(GL_TRIANGLES, 0, 6);
@@ -17,7 +18,7 @@ namespace vg3o {
 	void ScreenBuffer::useDefaultBuffer() {
 		glBindFramebuffer(GL_FRAMEBUFFER, 0);
 	}
-	unsigned int ScreenBuffer::genScreenQuad() {
+	void ScreenBuffer::genScreenQuad() {
 		float buffferVertices[] = {
 			// positions   // uv
 			-1.0f,  1.0f,  0.0f, 1.0f,
@@ -41,28 +42,49 @@ namespace vg3o {
 
 		glEnableVertexAttribArray(1);
 		glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, 4 * sizeof(float), (void*)(2 * sizeof(float)));
-		return quadVAO;
+		mVAO = quadVAO;
 	}
 
-	unsigned int ScreenBuffer::loadFramebuffer(const int SCREEN_WIDTH, const int SCREEN_HEIGHT) {
+	unsigned int ScreenBuffer::loadFramebuffer(const int SCREEN_WIDTH, const int SCREEN_HEIGHT, int colorBuffers, bool depthMap) {
+		mColorBuffers.clear();
+
 		unsigned int framebuffer;
 		glGenFramebuffers(1, &framebuffer);
 		glBindFramebuffer(GL_FRAMEBUFFER, framebuffer);
-		// create a color attachment texture
-		unsigned int colorBuffers[2];
-		for (unsigned int i = 0; i < 2; i++)
+		if (depthMap)
 		{
-			glGenTextures(1, &colorBuffers[i]);
-			glBindTexture(GL_TEXTURE_2D, colorBuffers[i]);
-			glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB16F, SCREEN_WIDTH, SCREEN_HEIGHT, 0, GL_RGB, GL_FLOAT, NULL);
+			// make the only color buffer the depth map
+			unsigned int depth;
+			glGenTextures(1, &depth);
+			glBindTexture(GL_TEXTURE_2D, depth);
+			glTexImage2D(GL_TEXTURE_2D, 0, GL_DEPTH_COMPONENT, SCREEN_WIDTH, SCREEN_HEIGHT, 0, GL_DEPTH_COMPONENT, GL_FLOAT, NULL);
+			glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+			glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+			glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);
+			glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
+			glFramebufferTexture2D(GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT, GL_TEXTURE_2D, depth, 0);
+			glDrawBuffer(GL_NONE);
+			glReadBuffer(GL_NONE);
+			glBindFramebuffer(GL_FRAMEBUFFER, 0);
+		}
+		else
+		{
+			// create a color attachment texture
+			for (unsigned int i = 0; i < colorBuffers; i++)
+			{
+				mColorBuffers.push_back(0);
+				glGenTextures(1, &mColorBuffers[i]);
+				glBindTexture(GL_TEXTURE_2D, mColorBuffers[i]);
+				glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB16F, SCREEN_WIDTH, SCREEN_HEIGHT, 0, GL_RGB, GL_FLOAT, NULL);
 
-			glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
-			glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
-			glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
-			glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
-			// attach texture to framebuffer
-			glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0 + i, GL_TEXTURE_2D, colorBuffers[i], 0);
-			mColorBuffers.push_back(colorBuffers[i]);
+				glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+				glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+				glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+				glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+				// attach texture to framebuffer
+				glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0 + i, GL_TEXTURE_2D, mColorBuffers[i], 0);
+				//mColorBuffers.push_back(colorBuffers[i]);
+			}
 		}
 		// create a renderbuffer object for depth and stencil attachment
 		unsigned int rbo;

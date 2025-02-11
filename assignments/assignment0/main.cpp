@@ -14,6 +14,7 @@
 #include <ew/model.h>
 #include <ew/transform.h>
 #include <ew/camera.h>
+#include <ew/procGen.h>
 #include <ew/cameraController.h>
 #include <ew/texture.h>
 #include <ew/Framebuffer.h>
@@ -47,13 +48,16 @@ ew::CameraController cameraControl;
 ew::Camera camera;
 
 // ImGui variables
-bool postProcessEnabled = true;
-int postProcessEffect = 0;
+bool postProcessEnabled = false;
+int postProcessEffect = 1;
 glm::vec3 backgroundColor = glm::vec3(0.6f, 0.8f, 0.92f);
+
 
 int main() {
 	GLFWwindow* window = initWindow("Assignment 1", screenWidth, screenHeight);
 	glfwSetFramebufferSizeCallback(window, framebufferSizeCallback);
+
+	vg3o::ScreenBuffer::genScreenQuad();
 
 	camera.position = glm::vec3(0.0f, 0.0f, 5.0f);
 	camera.target = glm::vec3(0.0f, 0.0f, 0.0f);
@@ -67,10 +71,15 @@ int main() {
 	ew::Model monkey = ew::Model("assets/Suzanne.obj");
 	ew::Transform monkeyTransform;
 
+	ew::Mesh quad = ew::createPlane(10.0f, 10.0f, 1);
+	ew::Transform floorTransform;
+	floorTransform.position = glm::vec3(0.0f, -2.0f, 0.0f);
+
 	GLuint brickTex = ew::loadTexture("assets/brick_color.jpg");
+	GLuint grassTex = ew::loadTexture("assets/grass.jpg");
 	
-	vg3o::ScreenBuffer framebuffer(screenWidth, screenHeight);
-	
+	vg3o::ScreenBuffer framebuffer(screenWidth, screenHeight, 1);
+	vg3o::ScreenBuffer depthMap(screenWidth, screenHeight, 1, true);
 
 	// Global settings
 	glEnable(GL_MULTISAMPLE);
@@ -89,13 +98,25 @@ int main() {
 		deltaTime = time - prevFrameTime;
 		prevFrameTime = time;
 
+		// RENDER DEPTH MAP
+		/*depthMap.useBuffer();
+		glClear(GL_DEPTH_BUFFER_BIT);
+		glm::mat4 lightProjection = glm::ortho(-10.0f, 10.0f, -10.0f, 10.0f, camera.nearPlane, camera.farPlane);
+		glm::mat4 lightView = glm::lookAt(glm::vec3(0.0f, -1.0f, 0.0f),
+										  glm::vec3(0.0f, 0.0f, 0.0f),
+										  glm::vec3(0.0f, 1.0f, 0.0f));
+
+		glm::mat4 lightSpaceMatrix = lightProjection * lightView;*/
+
+
+		// RENDER MAIN SCENE
 		framebuffer.useBuffer();
 		glEnable(GL_DEPTH_TEST);
-		//RENDER
 		glClearColor(backgroundColor.x, backgroundColor.y, backgroundColor.z, 1.0f);
 		glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
 		glBindTextureUnit(0, brickTex);
+		glBindTextureUnit(1, grassTex);
 
 		shader.use();
 		// lighting & materials
@@ -114,6 +135,11 @@ int main() {
 		shader.setMat4("_ViewProjection", camera.projectionMatrix() * camera.viewMatrix());
 		monkey.draw();
 
+		
+		shader.setMat4("_Model", floorTransform.modelMatrix());
+		shader.setInt("_MainTex", 1);
+		quad.draw();
+
 		// FINISH RENDER
 
 		framebuffer.useDefaultBuffer(); // go back to the framebuffer we want to draw on screen
@@ -129,7 +155,7 @@ int main() {
 		glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 		glActiveTexture(GL_TEXTURE0);
 		glBindTexture(GL_TEXTURE_2D, framebuffer.getColorBuffers()[0]);
-		framebuffer.draw();
+		vg3o::ScreenBuffer::draw();
 
 		drawUI();
 

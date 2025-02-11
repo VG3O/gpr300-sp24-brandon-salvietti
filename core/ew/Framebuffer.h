@@ -9,9 +9,8 @@ namespace vg3o {
 
 	class ScreenBuffer {
 	public:
-		ScreenBuffer(const int SCREEN_WIDTH, const int SCREEN_HEIGHT) {
-			mVAO = genScreenQuad();
-			mFramebuffer = loadFramebuffer(SCREEN_WIDTH, SCREEN_HEIGHT);
+		ScreenBuffer(const int SCREEN_WIDTH, const int SCREEN_HEIGHT, int numColorBuffers, bool depthMap = false) {
+			mFramebuffer = loadFramebuffer(SCREEN_WIDTH, SCREEN_HEIGHT, numColorBuffers, depthMap);
 		};
 		/// <summary>
 		/// Use the currently bound buffer.
@@ -24,16 +23,20 @@ namespace vg3o {
 		void useDefaultBuffer();
 
 		/// <summary>
-		/// Draws the screen quad using the buffer's color.
+		/// Draws the screen.
 		/// </summary>
-		void draw();
+		static void draw();
+
+		/// <summary>
+		/// Generates a global quad to render to.
+		/// </summary>
+		static void genScreenQuad();
 
 		std::vector<unsigned int> getColorBuffers() { return mColorBuffers; }
 	private:
-		unsigned int genScreenQuad();
-		unsigned int loadFramebuffer(const int SCREEN_WIDTH, const int SCREEN_HEIGHT);
+		unsigned int loadFramebuffer(const int SCREEN_WIDTH, const int SCREEN_HEIGHT, int colorBuffers, bool depthMap);
 
-		unsigned int mVAO;
+		static unsigned int mVAO;
 		std::vector<unsigned int> mColorBuffers;
 		unsigned int mTextureColorBuffer;
 		unsigned int mFramebuffer;
