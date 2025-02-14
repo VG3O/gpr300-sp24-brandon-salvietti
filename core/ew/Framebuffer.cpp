@@ -66,6 +66,7 @@ namespace vg3o {
 			glDrawBuffer(GL_NONE);
 			glReadBuffer(GL_NONE);
 			glBindFramebuffer(GL_FRAMEBUFFER, 0);
+			mDepthTexture = depth;
 		}
 		else
 		{

@@ -64,8 +64,10 @@ int main() {
 	camera.aspectRatio = (float)screenWidth / screenHeight;
 	camera.fov = 60.0f;
 
+	// shaders
 	ew::Shader shader = ew::Shader("assets/lit.vert", "assets/lit.frag");
-	ew::Shader screenShader = ew::Shader("assets/screen.vert", "assets/screen.frag");
+	ew::Shader depthShader = ew::Shader("assets/depthShader.vert", "assets/empty.frag");
+	ew::Shader screenShader = ew::Shader("assets/screen.vert", "assets/screenDepthMap.frag");
 	ew::Shader postShader = ew::Shader("assets/screen.vert", "assets/effects.frag");
 
 	ew::Model monkey = ew::Model("assets/Suzanne.obj");
@@ -99,52 +101,64 @@ int main() {
 		prevFrameTime = time;
 
 		// RENDER DEPTH MAP
-		/*depthMap.useBuffer();
+		depthMap.useBuffer();
+		depthShader.use();
 		glClear(GL_DEPTH_BUFFER_BIT);
-		glm::mat4 lightProjection = glm::ortho(-10.0f, 10.0f, -10.0f, 10.0f, camera.nearPlane, camera.farPlane);
-		glm::mat4 lightView = glm::lookAt(glm::vec3(0.0f, -1.0f, 0.0f),
+		glEnable(GL_DEPTH_TEST);
+
+		glm::mat4 lightProjection = glm::ortho(-10.0f, 10.0f, -10.0f, 10.0f, 0.1f, 100.f);
+		glm::mat4 lightView = glm::lookAt(glm::vec3(0.0f, 2.0f, 2.0f), // camera
 										  glm::vec3(0.0f, 0.0f, 0.0f),
 										  glm::vec3(0.0f, 1.0f, 0.0f));
 
-		glm::mat4 lightSpaceMatrix = lightProjection * lightView;*/
+		glm::mat4 lightSpaceMatrix = lightProjection * lightView;
 
-
-		// RENDER MAIN SCENE
-		framebuffer.useBuffer();
-		glEnable(GL_DEPTH_TEST);
-		glClearColor(backgroundColor.x, backgroundColor.y, backgroundColor.z, 1.0f);
-		glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-
-		glBindTextureUnit(0, brickTex);
-		glBindTextureUnit(1, grassTex);
-
-		shader.use();
-		// lighting & materials
-		shader.setVec3("_EyePos", camera.position);
-		shader.setFloat("_Material.Ka", material.Ambient);
-		shader.setFloat("_Material.Kd", material.Diffuse);
-		shader.setFloat("_Material.Ks", material.Specular);
-		shader.setFloat("_Material.Shininess", material.Shininess);
-
-		// texture
-		shader.setInt("_MainTex", 0);
 		cameraControl.move(window, &camera, deltaTime);
 		monkeyTransform.rotation = glm::rotate(monkeyTransform.rotation, deltaTime, glm::vec3(0.0f, 1.0f, 0.0f));
 		
-		shader.setMat4("_Model", monkeyTransform.modelMatrix());
-		shader.setMat4("_ViewProjection", camera.projectionMatrix() * camera.viewMatrix());
+		depthShader.setMat4("_Model", monkeyTransform.modelMatrix());
+		depthShader.setMat4("_LightSpaceMatrix", lightSpaceMatrix);
 		monkey.draw();
 
 		
-		shader.setMat4("_Model", floorTransform.modelMatrix());
-		shader.setInt("_MainTex", 1);
+		depthShader.setMat4("_Model", floorTransform.modelMatrix());
+		depthShader.setMat4("_LightSpaceMatrix", lightSpaceMatrix);
 		quad.draw();
+
+
+		// RENDER MAIN SCENE
+		//framebuffer.useBuffer();
+		//glClearColor(backgroundColor.x, backgroundColor.y, backgroundColor.z, 1.0f);
+		//glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+
+		//glBindTextureUnit(0, brickTex);
+		//glBindTextureUnit(1, grassTex);
+
+		//shader.use();
+		//// lighting & materials
+		//shader.setVec3("_EyePos", camera.position);
+		//shader.setFloat("_Material.Ka", material.Ambient);
+		//shader.setFloat("_Material.Kd", material.Diffuse);
+		//shader.setFloat("_Material.Ks", material.Specular);
+		//shader.setFloat("_Material.Shininess", material.Shininess);
+
+		//// texture
+		//shader.setInt("_MainTex", 0);
+		//
+		//shader.setMat4("_Model", monkeyTransform.modelMatrix());
+		//shader.setMat4("_ViewProjection", camera.projectionMatrix() * camera.viewMatrix());
+		//monkey.draw();
+
+		//
+		//shader.setMat4("_Model", floorTransform.modelMatrix());
+		//shader.setInt("_MainTex", 1);
+		//quad.draw();
 
 		// FINISH RENDER
 
 		framebuffer.useDefaultBuffer(); // go back to the framebuffer we want to draw on screen
 
-		if (!postProcessEnabled) screenShader.use();
+		if (!postProcessEnabled) { screenShader.use(); screenShader.setInt("depthTexture", 0); }
 		else
 		{
 			postShader.use();
@@ -154,7 +168,7 @@ int main() {
 		glDisable(GL_DEPTH_TEST); // disable depth testing cause we want the framebuffer to be on top of everything else
 		glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 		glActiveTexture(GL_TEXTURE0);
-		glBindTexture(GL_TEXTURE_2D, framebuffer.getColorBuffers()[0]);
+		glBindTexture(GL_TEXTURE_2D, depthMap.getDepthTexture());
 		vg3o::ScreenBuffer::draw();
 
 		drawUI();

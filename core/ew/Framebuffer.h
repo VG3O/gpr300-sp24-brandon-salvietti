@@ -33,12 +33,19 @@ namespace vg3o {
 		static void genScreenQuad();
 
 		std::vector<unsigned int> getColorBuffers() { return mColorBuffers; }
+
+		/// <summary>
+		/// Gets the depth texture attached to this framebuffer, if one exists.
+		/// </summary>
+		/// <returns>The location of the depth texture.</returns>
+		unsigned int getDepthTexture() { return mDepthTexture; }
 	private:
 		unsigned int loadFramebuffer(const int SCREEN_WIDTH, const int SCREEN_HEIGHT, int colorBuffers, bool depthMap);
 
 		static unsigned int mVAO;
 		std::vector<unsigned int> mColorBuffers;
 		unsigned int mTextureColorBuffer;
+		unsigned int mDepthTexture;
 		unsigned int mFramebuffer;
 	};
 }
