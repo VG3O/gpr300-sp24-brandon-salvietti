@@ -52,7 +52,9 @@ ew::Camera camera;
 bool postProcessEnabled = false;
 int postProcessEffect = 1;
 glm::vec3 backgroundColor = glm::vec3(0.6f, 0.8f, 0.92f);
+glm::vec3 lightDirection = glm::vec3(0.0f, -1.0f, 0.5f);
 
+unsigned int depthTexture;
 
 int main() {
 	GLFWwindow* window = initWindow("Assignment 1", screenWidth, screenHeight);
@@ -64,8 +66,9 @@ int main() {
 	camera.target = glm::vec3(0.0f, 0.0f, 0.0f);
 	camera.aspectRatio = (float)screenWidth / screenHeight;
 	camera.fov = 60.0f;
-
+	
 	// shaders
+
 	ew::Shader shader = ew::Shader("assets/lit.vert", "assets/lit.frag");
 	ew::Shader depthShader = ew::Shader("assets/depthShader.vert", "assets/empty.frag");
 	ew::Shader screenShader = ew::Shader("assets/screen.vert", "assets/screen.frag");
@@ -80,9 +83,11 @@ int main() {
 
 	GLuint brickTex = ew::loadTexture("assets/brick_color.jpg");
 	GLuint grassTex = ew::loadTexture("assets/grass.jpg");
-	
+
 	vg3o::ScreenBuffer framebuffer(screenWidth, screenHeight, 1);
 	vg3o::ScreenBuffer depthMap(screenWidth, screenHeight, 1, true);
+
+	depthTexture = depthMap.getDepthTexture();
 
 	// Global settings
 	glEnable(GL_MULTISAMPLE);
@@ -107,8 +112,8 @@ int main() {
 		glClear(GL_DEPTH_BUFFER_BIT);
 		glEnable(GL_DEPTH_TEST);
 
-		glm::mat4 lightProjection = glm::ortho(-10.0f, 10.0f, -10.0f, 10.0f, 1.f, 7.5f);
-		glm::mat4 lightView = glm::lookAt(glm::vec3(0.0f, 2.0f, 0.0f), // camera
+		glm::mat4 lightProjection = glm::ortho(-10.0f, 10.0f, -10.0f, 10.0f, 0.5f, 50.f);
+		glm::mat4 lightView = glm::lookAt(lightDirection, // camera
 										  glm::vec3(0.0f, 0.0f, 0.0f),
 										  glm::vec3(0.0f, 1.0f, 0.0f));
 
@@ -133,10 +138,12 @@ int main() {
 
 		glBindTextureUnit(0, brickTex);
 		glBindTextureUnit(1, grassTex);
+		glBindTextureUnit(2, depthMap.getDepthTexture());
 
 		shader.use();
 
 		// lighting & materials
+		shader.setVec3("_LightDirection", lightDirection);
 		shader.setVec3("_EyePos", camera.position);
 		shader.setFloat("_Material.Ka", material.Ambient);
 		shader.setFloat("_Material.Kd", material.Diffuse);
@@ -148,7 +155,7 @@ int main() {
 
 		//texture
 		shader.setInt("_MainTex", 0);
-		shader.setInt("_ShadowMap", depthMap.getDepthTexture());
+		shader.setInt("_ShadowMap", 2);
 		
 		shader.setMat4("_Model", monkeyTransform.modelMatrix());
 		shader.setMat4("_ViewProjection", camera.projectionMatrix() * camera.viewMatrix());
@@ -189,7 +196,13 @@ void drawUI() {
 	ImGui::NewFrame();
 
 	ImGui::Begin("Settings");
-	ImGui::ColorPicker3("Background Color", &backgroundColor.x);
+	//ImGui::ColorPicker3("Background Color", &backgroundColor.x);
+	ImGui::DragFloat3("Light Direction", &lightDirection.x, 0.001f, -1.f,1.f);
+
+	ImGui::BeginChild("Shadow Map");
+		ImVec2 windowSize = ImGui::GetWindowSize();
+		ImGui::Image((ImTextureID)depthTexture, windowSize, ImVec2(0, 1), ImVec2(1, 0));
+	ImGui::EndChild();
 
 	ImGui::Separator();
 
@@ -210,6 +223,7 @@ void drawUI() {
 	{
 		ImGui::SliderInt("Effect Type", &postProcessEffect, 0, 1);
 	}
+
 	ImGui::End();
 
 	ImGui::Render();
