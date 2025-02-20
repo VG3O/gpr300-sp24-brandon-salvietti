@@ -52,12 +52,14 @@ ew::Camera camera;
 bool postProcessEnabled = false;
 int postProcessEffect = 1;
 glm::vec3 backgroundColor = glm::vec3(0.6f, 0.8f, 0.92f);
-glm::vec3 lightDirection = glm::vec3(0.0f, -1.0f, 0.5f);
+glm::vec3 lightDirection = glm::vec3(0.0f, -1.0f, -0.2f);
+
+float maxBias = 0.005, minBias = 0.005;
 
 unsigned int depthTexture;
 
 int main() {
-	GLFWwindow* window = initWindow("Assignment 1", screenWidth, screenHeight);
+	GLFWwindow* window = initWindow("Assignment 2", screenWidth, screenHeight);
 	glfwSetFramebufferSizeCallback(window, framebufferSizeCallback);
 
 	vg3o::ScreenBuffer::genScreenQuad();
@@ -111,10 +113,11 @@ int main() {
 		depthShader.use();
 		glClear(GL_DEPTH_BUFFER_BIT);
 		glEnable(GL_DEPTH_TEST);
+		glCullFace(GL_FRONT);
 
 		glm::mat4 lightProjection = glm::ortho(-10.0f, 10.0f, -10.0f, 10.0f, 0.5f, 50.f);
-		glm::mat4 lightView = glm::lookAt(lightDirection, // camera
-										  glm::vec3(0.0f, 0.0f, 0.0f),
+		glm::mat4 lightView = glm::lookAt(glm::vec3(0.0f,5.0f,0.0f), // camera
+										  lightDirection,
 										  glm::vec3(0.0f, 1.0f, 0.0f));
 
 		glm::mat4 lightSpaceMatrix = lightProjection * lightView;
@@ -135,6 +138,7 @@ int main() {
 		framebuffer.useBuffer();
 		glClearColor(backgroundColor.x, backgroundColor.y, backgroundColor.z, 1.0f);
 		glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+		glCullFace(GL_BACK);
 
 		glBindTextureUnit(0, brickTex);
 		glBindTextureUnit(1, grassTex);
@@ -150,6 +154,9 @@ int main() {
 		shader.setFloat("_Material.Ks", material.Specular);
 		shader.setFloat("_Material.Ks", material.Specular);
 		shader.setFloat("_Material.Shininess", material.Shininess);
+
+		shader.setFloat("_MaxBias", maxBias);
+		shader.setFloat("_MinBias", minBias);
 
 		shader.setMat4("_LightSpace", lightSpaceMatrix);
 
@@ -197,7 +204,10 @@ void drawUI() {
 
 	ImGui::Begin("Settings");
 	//ImGui::ColorPicker3("Background Color", &backgroundColor.x);
-	ImGui::DragFloat3("Light Direction", &lightDirection.x, 0.001f, -1.f,1.f);
+	ImGui::DragFloat3("Light Direction", &lightDirection.x, 0.001f, -10.f,10.f);
+
+	ImGui::SliderFloat("Max Bias", &maxBias, 0.f, 1.f);
+	ImGui::SliderFloat("Min Bias", &minBias, 0.f, 1.f);
 
 	ImGui::BeginChild("Shadow Map");
 		ImVec2 windowSize = ImGui::GetWindowSize();

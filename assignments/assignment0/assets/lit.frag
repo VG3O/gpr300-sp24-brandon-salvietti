@@ -23,6 +23,9 @@ struct Material{
 };
 uniform Material _Material;
 
+uniform float _MinBias = 0.005;
+uniform float _MaxBias = 0.05;
+
 float CalculateShadow(vec4 lightSpacePosition){
 	vec3 projection = lightSpacePosition.xyz / lightSpacePosition.w;
 	projection = projection * 0.5 + 0.5;
@@ -30,7 +33,24 @@ float CalculateShadow(vec4 lightSpacePosition){
 	float closestDepth = texture(_ShadowMap, projection.xy).r;
 	float currentDepth = projection.z;
 
-	return currentDepth > closestDepth ? 1.0 : 0.0;
+	//float shadow = currentDepth - bias > closestDepth ? 1.0 : 0.0;
+	
+	float bias = max(_MaxBias * (1.0 - dot(fs_in.WorldNormal, _LightDirection)), _MinBias);
+
+	float shadow = 0.0;
+
+	vec2 texelSize = 1.0 / textureSize(_ShadowMap, 0);
+	for (int x = -1; x <= 1; ++x)
+	{
+		for (int y = -1; y <= 1; ++y)
+		{
+			float pcfDepth = texture(_ShadowMap, projection.xy + vec2(x,y) * texelSize).r;
+			shadow += currentDepth - bias > pcfDepth ? 1.0 : 0.0;
+		}
+	}
+	shadow /= 9.0;
+
+	return shadow;
 }
 
 void main(){
