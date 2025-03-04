@@ -25,7 +25,7 @@ Easing Functions
 
 glm::vec3 interpolate(glm::vec3 a, glm::vec3 b, float t)
 {
-	t = CLAMP(t, 0, 1);
+	//t = CLAMP(t, 0, 1);
 	return a + (b - a) * t;
 }
 
@@ -60,7 +60,7 @@ namespace vg3o {
 	Animation
 	----
 	*/
-	std::unordered_map<vg3o::EasingStyle, vg3o::EaseFunction> timeFunctions = {
+	std::unordered_map<EasingStyle, EaseFunction> timeFunctions = {
 		{LINEAR, linear},
 		{QUADRATIC, quad},
 		{CUBIC, cubic},
@@ -110,7 +110,7 @@ namespace vg3o {
 
 			for (int i = 0; i < keyframes.size(); i++)
 			{
-				if (keyframes[i].time < playbackTime) continue;
+				if (keyframes[i].time <= playbackTime) continue;
 				upper = keyframes[i];
 				lower = keyframes[i - 1];
 				break;
@@ -135,8 +135,14 @@ namespace vg3o {
 				break;
 			}
 		}
-		
+
 		maximalDuration = maxAnimDuration;
+		if (playbackTime >= maximalDuration)
+		{
+			if (looping) { playbackTime = 0; }
+			else { playing = false; }
+		}
+
 		return newTransform;
 	}
 };

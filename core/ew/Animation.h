@@ -42,6 +42,13 @@ namespace vg3o
 			value = target;
 		}
 
+		Keyframe(float _time, glm::vec3 target, EasingStyle easing)
+		{
+			time = _time;
+			value = target;
+			ease = easing;
+		}
+
 		float time = 0;
 		glm::vec3 value;
 		EasingStyle ease = LINEAR;
@@ -108,6 +115,13 @@ namespace vg3o
 		void Pause() { playing = false; }
 		void Loop(bool state) { looping = state; }
 
+		/// <summary>
+		/// Changes the animator's playable animations.
+		/// 
+		/// There are 3 types: 1 = Position, 2 = Rotation (Euler Angles), 3 = Scale
+		/// </summary>
+		/// <param name="newAnimation">The animation to send in</param>
+		/// <param name="type">Which transform value should be changed. Refer to reference above.</param>
 		void SetAnimation(Animation* newAnimation, int type) 
 		{ 
 			playing = false; 
@@ -124,6 +138,12 @@ namespace vg3o
 				break;
 			}
 		}
+		/// <summary>
+		/// Returns one of the animator's playable animations.
+		/// 
+		/// There are 3 types: 1 = Position, 2 = Rotation (Euler Angles), 3 = Scale
+		/// </summary>
+		/// <param name="type">Which animation to get. Refer to reference above.</param>
 		Animation* GetAnimation(int type) 
 		{
 			switch (type)
@@ -138,16 +158,17 @@ namespace vg3o
 			return nullptr;
 		}
 		ew::Transform UpdateAnimations(float dt);
-	private:
-
-		Animation* mPosAnimation = nullptr;
-		Animation* mScaleAnimation = nullptr;
-		Animation* mRotAnimation = nullptr;
 
 		bool playing = false;
 		bool looping = false;
 		float maximalDuration = 0;
 		float playbackSpeed = 1;
 		float playbackTime = 0;
+
+	private:
+
+		Animation* mPosAnimation = nullptr;
+		Animation* mScaleAnimation = nullptr;
+		Animation* mRotAnimation = nullptr;
 	};
 }

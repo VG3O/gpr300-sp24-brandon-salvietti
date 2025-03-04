@@ -60,14 +60,13 @@ float maxBias = 0.005, minBias = 0.005;
 
 unsigned int depthTexture;
 
-// animations
-vg3o::Animation* posAnimation = new vg3o::Animation();
-posAnimation->AddKeyframe(vg3o::Keyframe(0, glm::vec3(0, 0, 0)));
-
-
 //vg3o::Animation* scale = new vg3o::Animation();
 //
 //vg3o::Animation* rotation = new vg3o::Animation();
+
+vg3o::Animator animator;
+vg3o::Animation* posAnimation = new vg3o::Animation();
+vg3o::Animation* rotAnimation = new vg3o::Animation();
 
 int main() {
 	GLFWwindow* window = initWindow("Assignment 2", screenWidth, screenHeight);
@@ -102,6 +101,21 @@ int main() {
 
 	depthTexture = depthMap.getDepthTexture();
 
+	// animations
+	posAnimation->AddKeyframe(vg3o::Keyframe(0, glm::vec3(0, 0, 0), vg3o::QUINTIC));
+	posAnimation->AddKeyframe(vg3o::Keyframe(1, glm::vec3(0, 2, 1), vg3o::BACK));
+	posAnimation->AddKeyframe(vg3o::Keyframe(3, glm::vec3(-2, -0.5f, -1), vg3o::BACK));
+
+	rotAnimation->AddKeyframe(vg3o::Keyframe(0, glm::vec3(0, 0, 0), vg3o::EXPONENTIAL));
+	rotAnimation->AddKeyframe(vg3o::Keyframe(2.5, glm::vec3(0, 100, 0), vg3o::CIRCULAR));
+	rotAnimation->AddKeyframe(vg3o::Keyframe(5, glm::vec3(180, -60, 0), vg3o::BACK));
+
+	// animator
+	animator.SetAnimation(posAnimation, 1);
+	animator.SetAnimation(rotAnimation, 2);
+	animator.Loop(true);
+	animator.Play();
+
 	// Global settings
 	glEnable(GL_MULTISAMPLE);
 	glEnable(GL_CULL_FACE);
@@ -119,6 +133,13 @@ int main() {
 		deltaTime = time - prevFrameTime;
 		prevFrameTime = time;
 
+		// UPDATE TRANSFORMS
+
+		cameraControl.move(window, &camera, deltaTime);
+
+		ew::Transform animatorUpdateTransform = animator.UpdateAnimations(deltaTime);
+		monkeyTransform = animatorUpdateTransform;
+
 		// RENDER DEPTH MAP
 		depthMap.useBuffer();
 		depthShader.use();
@@ -133,9 +154,6 @@ int main() {
 										  glm::vec3(0.0f, 1.0f, 0.0f));
 
 		glm::mat4 lightSpaceMatrix = lightProjection * lightView;
-
-		cameraControl.move(window, &camera, deltaTime);
-		monkeyTransform.rotation = glm::rotate(monkeyTransform.rotation, deltaTime, glm::vec3(0.0f, 1.0f, 0.0f));
 		
 		depthShader.setMat4("_LightSpaceMatrix", lightSpaceMatrix);
 		depthShader.setMat4("_Model", monkeyTransform.modelMatrix());
@@ -215,39 +233,49 @@ void drawUI() {
 	ImGui_ImplOpenGL3_NewFrame();
 	ImGui::NewFrame();
 
-	ImGui::Begin("Settings");
-	//ImGui::ColorPicker3("Background Color", &backgroundColor.x);
-	ImGui::DragFloat3("Light Direction", &lightDirection.x, 0.001f, -10.f,10.f);
+	{ // Main Settings
+		ImGui::Begin("Settings");
+		//ImGui::ColorPicker3("Background Color", &backgroundColor.x);
+		ImGui::DragFloat3("Light Direction", &lightDirection.x, 0.001f, -10.f, 10.f);
 
-	ImGui::SliderFloat("Max Bias", &maxBias, 0.f, 1.f);
-	ImGui::SliderFloat("Min Bias", &minBias, 0.f, 1.f);
+		ImGui::SliderFloat("Max Bias", &maxBias, 0.f, 1.f);
+		ImGui::SliderFloat("Min Bias", &minBias, 0.f, 1.f);
 
-	ImGui::BeginChild("Shadow Map");
+		ImGui::BeginChild("Shadow Map");
 		ImVec2 windowSize = ImGui::GetWindowSize();
 		ImGui::Image((ImTextureID)depthTexture, windowSize, ImVec2(0, 1), ImVec2(1, 0));
-	ImGui::EndChild();
+		ImGui::EndChild();
 
-	ImGui::Separator();
+		ImGui::Separator();
 
-	if (ImGui::Button("Reset Camera"))
-	{
-		resetCamera(&camera, &cameraControl);
+		if (ImGui::Button("Reset Camera"))
+		{
+			resetCamera(&camera, &cameraControl);
+		}
+
+		if (ImGui::CollapsingHeader("Material Settings")) {
+			ImGui::SliderFloat("AmbientK", &material.Ambient, 0.0f, 1.0f);
+			ImGui::SliderFloat("DiffuseK", &material.Diffuse, 0.0f, 1.0f);
+			ImGui::SliderFloat("SpecularK", &material.Specular, 0.0f, 1.0f);
+			ImGui::SliderFloat("Shininess", &material.Shininess, 2.0f, 1024.0f);
+		}
+		ImGui::Separator();
+		ImGui::Checkbox("Enable Post Processing", &postProcessEnabled);
+		if (postProcessEnabled)
+		{
+			ImGui::SliderInt("Effect Type", &postProcessEffect, 0, 1);
+		}
+
+		ImGui::End();
 	}
+	{ // Animator Settings
+		ImGui::Begin("Animator");
+		
 
-	if (ImGui::CollapsingHeader("Material Settings")) {
-		ImGui::SliderFloat("AmbientK", &material.Ambient, 0.0f, 1.0f);
-		ImGui::SliderFloat("DiffuseK", &material.Diffuse, 0.0f, 1.0f);
-		ImGui::SliderFloat("SpecularK", &material.Specular, 0.0f, 1.0f);
-		ImGui::SliderFloat("Shininess", &material.Shininess, 2.0f, 1024.0f);
-	}
-	ImGui::Separator();
-	ImGui::Checkbox("Enable Post Processing", &postProcessEnabled);
-	if (postProcessEnabled)
-	{
-		ImGui::SliderInt("Effect Type", &postProcessEffect, 0, 1);
-	}
+		ImGui::SliderFloat("Playback Time", &animator.playbackTime, 0.f, animator.maximalDuration);
 
-	ImGui::End();
+		ImGui::End();
+	}
 
 	ImGui::Render();
 	ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());
