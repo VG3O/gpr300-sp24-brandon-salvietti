@@ -18,7 +18,9 @@
 #include <ew/procGen.h>
 #include <ew/cameraController.h>
 #include <ew/texture.h>
+
 #include <ew/Framebuffer.h>
+#include <ew/Animation.h>
 
 void framebufferSizeCallback(GLFWwindow* window, int width, int height);
 GLFWwindow* initWindow(const char* title, int width, int height);
@@ -57,6 +59,15 @@ glm::vec3 lightDirection = glm::vec3(0.0f, -1.0f, -0.2f);
 float maxBias = 0.005, minBias = 0.005;
 
 unsigned int depthTexture;
+
+// animations
+vg3o::Animation* posAnimation = new vg3o::Animation();
+posAnimation->AddKeyframe(vg3o::Keyframe(0, glm::vec3(0, 0, 0)));
+
+
+//vg3o::Animation* scale = new vg3o::Animation();
+//
+//vg3o::Animation* rotation = new vg3o::Animation();
 
 int main() {
 	GLFWwindow* window = initWindow("Assignment 2", screenWidth, screenHeight);
@@ -196,6 +207,7 @@ int main() {
 		glfwSwapBuffers(window);
 	}
 	printf("Shutting down...");
+	vg3o::Animation::Cleanup();
 }
 
 void drawUI() {

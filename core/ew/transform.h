@@ -20,5 +20,7 @@ namespace ew {
 			m = glm::scale(m, scale);
 			return m;
 		}
+
+
 	};
 }
