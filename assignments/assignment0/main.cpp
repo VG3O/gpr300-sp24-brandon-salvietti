@@ -241,12 +241,11 @@ void KeyframeListImGui(std::string name, vg3o::Animation* animation, int& id)
 		std::vector<vg3o::Keyframe>& keyframes = animation->GetKeyframes();
 		for (int i = 0; i < keyframes.size(); i++)
 		{
-			id++;
-			ImGui::PushID(id);
+			vg3o::Keyframe& keyframe = keyframes[i];
+			ImGui::PushID(&keyframe);
 			std::string name = "Keyframe " + std::to_string(i + 1);
 			if (ImGui::CollapsingHeader(name.c_str()))
 			{
-				vg3o::Keyframe& keyframe = keyframes[i];
 				ImGui::DragFloat("Time", &keyframe.time, 0.01f);
 				ImGui::DragFloat3("Value", &keyframe.value.x, 0.05f);
 				ImGui::Combo("Easing Style", &keyframe.easeInt, vg3o::EasingNames, 10);
@@ -255,9 +254,12 @@ void KeyframeListImGui(std::string name, vg3o::Animation* animation, int& id)
 			}
 			ImGui::PopID();
 		}
+		ImGui::PushID(id);
 		if (ImGui::Button("Add Keyframe", ImVec2(100, 20))) { animation->AddKeyframe(vg3o::Keyframe(keyframes.size(), glm::vec3(0, 0, 0), vg3o::QUADRATIC)); }
 		ImGui::SameLine(115);
 		if (ImGui::Button("Remove Keyframe", ImVec2(115, 20))) { animation->PopKeyframe(); }
+		ImGui::PopID();
+		id++;
 	}
 }
 

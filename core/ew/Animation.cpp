@@ -32,7 +32,7 @@ glm::vec3 interpolate(glm::vec3 a, glm::vec3 b, float t)
 }
 
 // basic time functions
-float linear(float t, bool easeIn) { return easeIn ? 1 - t : t; }
+float linear(float t, bool easeIn) { return easeIn ? t : 1 - (1 - t); }
 float quad(float t, bool easeIn) { return easeIn ? pow(t, 2) : 1 - pow(1-t, 2); }
 float cubic(float t, bool easeIn) { return easeIn ? pow(t, 3) : 1 - pow(1-t, 3); }
 float quart(float t, bool easeIn) { return easeIn ? pow(t, 4) : 1 - pow(1 - t, 4); }
