@@ -25,7 +25,21 @@ namespace vg3o
 		EXPONENTIAL,
 		SINE,
 		BACK,
-		CIRCULAR
+		CIRCULAR,
+		ELASTIC,
+	};
+
+	const char* const EasingNames[10] = {
+		"Linear",
+		"Quadratic",
+		"Cubic",
+		"Quartic",
+		"Quintic",
+		"Exponential",
+		"Sine",
+		"Back",
+		"Circular",
+		"Elastic",
 	};
 
 	struct Keyframe
@@ -47,11 +61,13 @@ namespace vg3o
 			time = _time;
 			value = target;
 			ease = easing;
+			easeInt = (int)easing;
 		}
 
 		float time = 0;
 		glm::vec3 value;
 		EasingStyle ease = LINEAR;
+		int easeInt = 0;
 		bool easeIn = false;
 	};
 
@@ -89,7 +105,7 @@ namespace vg3o
 		}
 
 		void ClearKeyframes() { mKeyframes.clear(); UpdateDuration(); }
-		std::vector<Keyframe> GetKeyframes() { return mKeyframes; }
+		std::vector<Keyframe>& GetKeyframes() { return mKeyframes; }
 		float GetDuration() { return mDuration; }
 
 		static void Cleanup() 
@@ -99,10 +115,10 @@ namespace vg3o
 			
 			animations.clear();
 		};
+		void UpdateDuration();
 	private:
 		static std::vector<Animation*> animations;
 
-		void UpdateDuration();
 		std::vector<Keyframe> mKeyframes;
 		float mDuration = 0; // maximal keyframe time, set this on keyframe change
 	};
@@ -110,7 +126,7 @@ namespace vg3o
 	class Animator
 	{
 	public:
-		void Play() { playing = true; }
+		void Play() { playing = true; playbackTime = 0; }
 		void Stop() { playing = false; playbackTime = 0; }
 		void Pause() { playing = false; }
 		void Loop(bool state) { looping = state; }

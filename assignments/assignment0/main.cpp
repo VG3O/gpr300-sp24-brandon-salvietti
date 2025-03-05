@@ -27,8 +27,8 @@ GLFWwindow* initWindow(const char* title, int width, int height);
 void drawUI();
 
 //Global state
-int screenWidth = 1080;
-int screenHeight = 720;
+int screenWidth = 1600;
+int screenHeight = 850;
 float prevFrameTime;
 float deltaTime;
 
@@ -67,9 +67,10 @@ unsigned int depthTexture;
 vg3o::Animator animator;
 vg3o::Animation* posAnimation = new vg3o::Animation();
 vg3o::Animation* rotAnimation = new vg3o::Animation();
+vg3o::Animation* scaleAnimation = new vg3o::Animation();
 
 int main() {
-	GLFWwindow* window = initWindow("Assignment 2", screenWidth, screenHeight);
+	GLFWwindow* window = initWindow("Assignment 4", screenWidth, screenHeight);
 	glfwSetFramebufferSizeCallback(window, framebufferSizeCallback);
 
 	vg3o::ScreenBuffer::genScreenQuad();
@@ -110,9 +111,14 @@ int main() {
 	rotAnimation->AddKeyframe(vg3o::Keyframe(2.5, glm::vec3(0, 100, 0), vg3o::CIRCULAR));
 	rotAnimation->AddKeyframe(vg3o::Keyframe(5, glm::vec3(180, -60, 0), vg3o::BACK));
 
+	scaleAnimation->AddKeyframe(vg3o::Keyframe(0, glm::vec3(1, 1, 1), vg3o::EXPONENTIAL));
+	scaleAnimation->AddKeyframe(vg3o::Keyframe(1, glm::vec3(0.5, 3, 0.5), vg3o::SINE));
+	scaleAnimation->AddKeyframe(vg3o::Keyframe(7, glm::vec3(2, 0.5, 3), vg3o::LINEAR));
+
 	// animator
 	animator.SetAnimation(posAnimation, 1);
 	animator.SetAnimation(rotAnimation, 2);
+	animator.SetAnimation(scaleAnimation, 3);
 	animator.Loop(true);
 	animator.Play();
 
@@ -228,6 +234,33 @@ int main() {
 	vg3o::Animation::Cleanup();
 }
 
+void KeyframeListImGui(std::string name, vg3o::Animation* animation, int& id)
+{
+	if (ImGui::CollapsingHeader(name.c_str()))
+	{
+		std::vector<vg3o::Keyframe>& keyframes = animation->GetKeyframes();
+		for (int i = 0; i < keyframes.size(); i++)
+		{
+			id++;
+			ImGui::PushID(id);
+			std::string name = "Keyframe " + std::to_string(i + 1);
+			if (ImGui::CollapsingHeader(name.c_str()))
+			{
+				vg3o::Keyframe& keyframe = keyframes[i];
+				ImGui::DragFloat("Time", &keyframe.time, 0.01f);
+				ImGui::DragFloat3("Value", &keyframe.value.x, 0.05f);
+				ImGui::Combo("Easing Style", &keyframe.easeInt, vg3o::EasingNames, 10);
+				ImGui::Checkbox("Ease In", &keyframe.easeIn);
+				keyframe.ease = (vg3o::EasingStyle)keyframe.easeInt;
+			}
+			ImGui::PopID();
+		}
+		if (ImGui::Button("Add Keyframe", ImVec2(100, 20))) { animation->AddKeyframe(vg3o::Keyframe(keyframes.size(), glm::vec3(0, 0, 0), vg3o::QUADRATIC)); }
+		ImGui::SameLine(115);
+		if (ImGui::Button("Remove Keyframe", ImVec2(115, 20))) { animation->PopKeyframe(); }
+	}
+}
+
 void drawUI() {
 	ImGui_ImplGlfw_NewFrame();
 	ImGui_ImplOpenGL3_NewFrame();
@@ -270,9 +303,24 @@ void drawUI() {
 	}
 	{ // Animator Settings
 		ImGui::Begin("Animator");
-		
 
 		ImGui::SliderFloat("Playback Time", &animator.playbackTime, 0.f, animator.maximalDuration);
+		ImGui::SliderFloat("Playback Speed", &animator.playbackSpeed, -3.f, 4.f);
+		ImGui::Checkbox("Loop", &animator.looping);
+		
+		if (ImGui::Button("Play", ImVec2(80, 25))) animator.Play();
+		ImGui::SameLine(100.f);
+		if (ImGui::Button("Pause", ImVec2(80, 25))) animator.Pause();
+		ImGui::SameLine(192.f);
+		if (ImGui::Button("Stop", ImVec2(80, 25))) animator.Stop();
+
+		int id = 0;
+		ImGui::Separator();
+		KeyframeListImGui("Position Keyframes", posAnimation, id);
+		ImGui::Separator();
+		KeyframeListImGui("Rotation Keyframes", rotAnimation, id);
+		ImGui::Separator();
+		KeyframeListImGui("Scale Keyframes", scaleAnimation, id);
 
 		ImGui::End();
 	}
