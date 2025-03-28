@@ -15,7 +15,7 @@ set(CORE_INC_DIR
  CACHE PATH "CORE INCLUDE SOURCE PATH"
 )
 
-add_library(core STATIC ${CORE_SRC} ${CORE_INC} "ew/Animation.h")
+add_library(core STATIC ${CORE_SRC} ${CORE_INC} "ew/Animation.h" "ew/FKSolver.h" "ew/FKSolver.cpp")
 
 find_package(OpenGL REQUIRED)
 
